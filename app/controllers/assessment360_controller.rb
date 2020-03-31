@@ -66,7 +66,7 @@ class Assessment360Controller < ApplicationController
   def overall_review_count(assignments, overall_teammate_review_count, overall_meta_review_count)
     assignments.each do |assignment|
       temp_count = overall_teammate_review_count[assignment.id]
-      overall_review_count_hash[assignment.id] = 1 if temp_count.nil? or temp_count.zero?
+      overall_teammate_review_count[assignment.id] = 1 if temp_count.nil? or temp_count.zero?
       temp_count = overall_meta_review_count[assignment.id]
       overall_meta_review_count[assignment.id] = 1 if temp_count.nil? or temp_count.zero?
     end
@@ -92,8 +92,8 @@ class Assessment360Controller < ApplicationController
     @final_grades = {}
     course = Course.find(params[:course_id])
     @assignments = course.assignments.reject(&:is_calibrated).reject {|a| a.participants.empty? }
+    insure_existence_of(course)
     @course_participants = course.get_participants
-    insure_existence_of(@course_participants)
     @course_participants.each do |cp|
       @topics[cp.id] = {}
       @assignment_grades[cp.id] = {}
@@ -102,7 +102,6 @@ class Assessment360Controller < ApplicationController
       @assignments.each do |assignment|
         user_id = cp.user_id
         assignment_id = assignment.id
-        assignment_participant = assignment.participants.find_by(user_id: user_id)
         # break out of the loop if there are no participants in the assignment
         next if assignment.participants.find_by(user_id: user_id).nil?
         # break out of the loop if the participant has no team
@@ -110,7 +109,7 @@ class Assessment360Controller < ApplicationController
         # pull information about the student's grades for particular assignment
         assignment_grade_summary(cp, assignment_id)
         peer_review_score = find_peer_review_score(user_id, assignment_id)
-        next if (peer_review_score[:review] && peer_review_score[:review][:scores] && peer_review_score[:review][:scores][:avg]).nil?
+        next if (peer_review_score[:review].nil? || peer_review_score[:review][:scores].nil? || peer_review_score[:review][:scores][:avg].nil?)
         @peer_review_scores[cp.id][assignment_id] = peer_review_score[:review][:scores][:avg].round(2)
       end
     end
@@ -129,8 +128,8 @@ class Assessment360Controller < ApplicationController
     @final_grades[cp.id] += @assignment_grades[cp.id][assignment_id]
   end
 
-  def insure_existence_of(course_participants)
-    if course_participants.empty?
+  def insure_existence_of(course)
+    if course.get_participants.empty?
       flash[:error] = "There is no course participant in course #{course.name}"
       redirect_to(:back)
     end
