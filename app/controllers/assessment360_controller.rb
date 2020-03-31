@@ -15,7 +15,7 @@ class Assessment360Controller < ApplicationController
     course = Course.find(params[:course_id])
     @assignments = course.assignments.reject(&:is_calibrated).reject {|a| a.participants.empty? }
     @course_participants = course.get_participants
-    insure_existence_of(@course_participants)
+    insure_existence_of(@course_participants,course)
     # hashes for view
     @meta_review = {}
     @teammate_review = {}
@@ -92,8 +92,8 @@ class Assessment360Controller < ApplicationController
     @final_grades = {}
     course = Course.find(params[:course_id])
     @assignments = course.assignments.reject(&:is_calibrated).reject {|a| a.participants.empty? }
-    insure_existence_of(course)
     @course_participants = course.get_participants
+    insure_existence_of(@course_participants,course)
     @course_participants.each do |cp|
       @topics[cp.id] = {}
       @assignment_grades[cp.id] = {}
@@ -128,8 +128,8 @@ class Assessment360Controller < ApplicationController
     @final_grades[cp.id] += @assignment_grades[cp.id][assignment_id]
   end
 
-  def insure_existence_of(course)
-    if course.get_participants.empty?
+  def insure_existence_of(course_participants,course)
+    if course_participants.empty?
       flash[:error] = "There is no course participant in course #{course.name}"
       redirect_to(:back)
     end
